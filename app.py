@@ -84,13 +84,7 @@ def create_app(config_name=None):
                 if organization.status == OrganizationStatus.SUSPENDED:
                     if request.endpoint != 'organization.billing':
                         flash('Your organization has been suspended. Please contact support.', 'danger')
-                        return redirect(url_for('organization.billing'))
-                
-                # Check if trial has expired
-                if organization.is_trial and organization.trial_days_remaining == 0:
-                    if request.endpoint != 'organization.billing':
-                        flash('Your trial has expired. Please upgrade your plan.', 'warning')
-                        return redirect(url_for('organization.billing'))
+                        return redirect(url_for('dashboard.index'))
     
     # Root route
     @app.route('/')

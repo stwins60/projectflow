@@ -86,11 +86,10 @@ def signup():
             slug=slug,
             subdomain=subdomain,
             plan=SubscriptionPlan.FREE,
-            status=OrganizationStatus.TRIAL,
-            trial_ends_at=datetime.utcnow() + timedelta(days=14),  # 14-day trial
-            max_users=5,
-            max_projects=3,
-            max_storage_mb=100
+            status=OrganizationStatus.ACTIVE,
+            max_users=1000,
+            max_projects=1000,
+            max_storage_mb=10240
         )
         
         db.session.add(organization)
@@ -132,7 +131,7 @@ def signup():
         # Login the user
         login_user(user)
         
-        flash(f'Welcome to {org_name}! Your 14-day trial has started.', 'success')
+        flash(f'Welcome to {org_name}! Your workspace is ready.', 'success')
         return redirect(url_for('dashboard.index'))
     
     # GET request
@@ -246,7 +245,7 @@ def invite_member():
     
     # Check user limit
     if not organization.can_add_user():
-        flash(f'User limit reached ({organization.max_users}). Please upgrade your plan.', 'warning')
+        flash(f'Member limit reached. Please contact your administrator.', 'warning')
         return redirect(url_for('organization.members'))
     
     email = request.form.get('email', '').strip().lower()

@@ -12,14 +12,53 @@ A full-featured **Multi-Tenant** Project Management Web Application similar to J
 
 <img src="static/img/logo.svg" alt="Project Manager" width="300">
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/landing.png" alt="Landing Page" width="100%">
+      <br/>
+      <b>🏠 Landing Page</b> — Clean hero with features overview and quick signup
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%">
+      <br/>
+      <b>� Dashboard</b> — At-a-glance stats, weekly progress chart, and task distribution
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/kanban.png" alt="Kanban Board" width="100%">
+      <br/>
+      <b>�️ Kanban Board</b> — Drag-and-drop issue management across status columns
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/issues.png" alt="Issues List" width="100%">
+      <br/>
+      <b>� Issues</b> — Filterable issue list with search, status, priority, and project filters
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/projects.png" alt="Projects" width="100%">
+      <br/>
+      <b>📁 Projects</b> — Project management with a New Project button and full list view
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/org_signup.png" alt="Workspace Signup" width="100%">
+      <br/>
+      <b>🏢 Workspace Signup</b> — Simple org onboarding, free forever, no credit card needed
+    </td>
+  </tr>
+</table>
+
 ## ✨ Features
 
 ### 🏢 Multi-Tenancy (SaaS)
+- **Self-Hosted & Free**: Deploy on your own infrastructure at no cost
 - **Organization Workspaces**: Each organization has isolated data and projects
 - **Subdomain Support**: Custom subdomains for each organization (e.g., acme.projectmanager.app)
-- **Subscription Plans**: Free, Starter, Professional, Enterprise tiers
-- **Trial Period**: 14-day free trial for new organizations
-- **Usage Limits**: Configurable limits per plan (users, projects, storage)
 - **Secure Isolation**: Complete data separation between organizations
 
 ### Core Features
@@ -147,10 +186,10 @@ docker compose exec web flask create-admin
    - Admin email and password
 
 2. **You'll get:**
-   - 14-day free trial
-   - Up to 5 team members
-   - 3 projects
+   - Unlimited team members
+   - Unlimited projects
    - All features enabled
+   - Full admin access
 
 3. **Start creating:**
    - Create your first project
