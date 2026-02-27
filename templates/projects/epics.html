@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Epics - {{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-diagram-3"></i> Epics</h1>
+        <p class="text-muted">{{ project.name }} - Manage large initiatives and track progress</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEpicModal">
+            <i class="bi bi-plus-lg"></i> Create Epic
+        </button>
+    </div>
+</div>
+
+<!-- Epic Cards -->
+<div class="row g-3 mb-4">
+    {% for epic in epics %}
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('issues.index', project_id=project.id, epic_id=epic.id) }}" class="text-decoration-none">
+            <div class="card h-100 epic-card" style="border-left: 4px solid {{ epic.color }}; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">{{ epic.name }}</h5>
+                        <span class="badge badge-{{ epic.status }}">{{ epic.status.replace('_', ' ').title() }}</span>
+                    </div>
+                    <div class="dropdown" onclick="event.preventDefault(); event.stopPropagation();">
+                        <button class="btn btn-sm btn-light" data-bs-toggle="dropdown" onclick="event.stopPropagation();">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" 
+                                   data-bs-target="#editEpicModal{{ epic.id }}">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('issues.create', project_id=project.id, epic_id=epic.id) }}">
+                                    <i class="bi bi-plus"></i> Add Issue
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ url_for('projects.delete_epic', project_id=project.id, epic_id=epic.id) }}"
+                                      onsubmit="return confirm('Delete this epic? Issues will be unlinked.')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                {% if epic.description %}
+                <p class="card-text text-muted small mb-3">{{ epic.description[:150] }}{% if epic.description|length > 150 %}...{% endif %}</p>
+                {% endif %}
+                
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Progress</small>
+                        <small class="fw-bold">{{ epic.progress }}%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ epic.progress }}%; background-color: {{ epic.color }};"
+                             aria-valuenow="{{ epic.progress }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="d-flex justify-content-between align-items-center text-muted small">
+                    <span>
+                        <i class="bi bi-list-task"></i> {{ epic.issue_count }} issues
+                    </span>
+                    {% if epic.owner %}
+                    <span>
+                        <i class="bi bi-person"></i> {{ epic.owner.username }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                {% if epic.target_date %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-calendar"></i> Target: {{ epic.target_date.strftime('%b %d, %Y') }}
+                    </small>
+                </div>
+                {% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <!-- Edit Epic Modal -->
+    <div class="modal fade" id="editEpicModal{{ epic.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Epic</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('projects.edit_epic', project_id=project.id, epic_id=epic.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Epic Name *</label>
+                            <input type="text" class="form-control" name="name" value="{{ epic.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3">{{ epic.description }}</textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Color</label>
+                                    <input type="color" class="form-control" name="color" value="{{ epic.color }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" name="status">
+                                        <option value="open" {{ 'selected' if epic.status == 'open' }}>Open</option>
+                                        <option value="in_progress" {{ 'selected' if epic.status == 'in_progress' }}>In Progress</option>
+                                        <option value="done" {{ 'selected' if epic.status == 'done' }}>Done</option>
+                                        <option value="cancelled" {{ 'selected' if epic.status == 'cancelled' }}>Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Owner</label>
+                            <select class="form-select" name="owner_id">
+                                <option value="">None</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {{ 'selected' if epic.owner_id == user.id }}>
+                                    {{ user.full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not epics %}
+<div class="text-center py-5">
+    <i class="bi bi-diagram-3" style="font-size: 4rem; color: var(--text-muted);"></i>
+    <h4 class="mt-3">No Epics Yet</h4>
+    <p class="text-muted">Create your first epic to organize large initiatives and track progress across multiple issues.</p>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEpicModal">
+        <i class="bi bi-plus-lg"></i> Create Epic
+    </button>
+</div>
+{% endif %}
+
+<!-- Create Epic Modal -->
+<div class="modal fade" id="createEpicModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-diagram-3"></i> Create Epic
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('projects.create_epic', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Epic Name *</label>
+                        <input type="text" class="form-control" name="name" 
+                               placeholder="e.g., User Authentication System" required>
+                        <small class="form-text text-muted">
+                            A short, descriptive name for this initiative
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"
+                                  placeholder="Describe the epic's goals and scope..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Color</label>
+                                <input type="color" class="form-control" name="color" value="#8b5cf6">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Owner</label>
+                                <select class="form-select" name="owner_id">
+                                    <option value="">Select owner...</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Tip:</strong> Epics help you organize related issues and track progress on large initiatives.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Create Epic
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-open {
+    background-color: #3b82f6;
+}
+
+.badge-in_progress {
+    background-color: #f59e0b;
+}
+
+.badge-done {
+    background-color: #22c55e;
+}
+
+.badge-cancelled {
+    background-color: #64748b;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                <li class="breadcrumb-item active">{{ project.key }}</li>
+            </ol>
+        </nav>
+        <h1>{{ project.name }}</h1>
+        {% if project.description %}
+            <p class="text-muted">{{ project.description }}</p>
+        {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('issues.kanban', project_id=project.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-kanban"></i> Kanban
+        </a>
+        <a href="{{ url_for('issues.create', project_id=project.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Issue
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Project Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary">
+                        <i class="bi bi-list-task"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>{{ project.issue_count }}</h3>
+                        <span>Total Issues</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success">
+                        <i class="bi bi-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>{{ project.open_issues_count }}</h3>
+                        <span>Open</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning">
+                        <i class="bi bi-hourglass"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>{{ project.in_progress_count }}</h3>
+                        <span>In Progress</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-info">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>{{ project.closed_issues_count }}</h3>
+                        <span>Closed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-grid"></i> Project Management</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.epics', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-diagram-3 text-primary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Epics</strong><br>
+                                    <small class="text-muted">Large initiatives</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.components', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-box-seam text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Components</strong><br>
+                                    <small class="text-muted">System parts</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.versions', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-tags text-info" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Versions</strong><br>
+                                    <small class="text-muted">Releases</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.sprints', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-calendar-week text-warning" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Sprints</strong><br>
+                                    <small class="text-muted">Time-boxed work</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.labels', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-tag text-danger" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Labels</strong><br>
+                                    <small class="text-muted">Categorize issues</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('projects.members', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-people text-secondary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Members</strong><br>
+                                    <small class="text-muted">Team access</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('wiki.index', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center p-3 border rounded hover-bg">
+                                <div class="me-3">
+                                    <i class="bi bi-book text-purple" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>Wiki</strong><br>
+                                    <small class="text-muted">Documentation</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Issues -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Issues</h5>
+                <a href="{{ url_for('issues.index', project_id=project.id) }}" class="btn btn-sm btn-light">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in recent_issues %}
+                            <tr onclick="window.location='{{ url_for('issues.view', issue_id=issue.id) }}'" style="cursor: pointer;">
+                                <td><strong>{{ issue.key }}</strong></td>
+                                <td>{{ issue.title[:40] }}{% if issue.title|length > 40 %}...{% endif %}</td>
+                                <td>
+                                    <span class="badge status-{{ issue.status.value }}">
+                                        {{ issue.status.value|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge priority-{{ issue.priority.value }}">
+                                        {{ issue.priority.value|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if issue.assignee %}
+                                        <div class="user-avatar-xs">{{ issue.assignee.username[0].upper() }}</div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No issues yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sprint Progress -->
+        {% if active_sprint %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Active Sprint: {{ active_sprint.name }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Progress</span>
+                    <span>{{ active_sprint.completed_issues }}/{{ active_sprint.total_issues }} issues</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar" style="width: {{ active_sprint.progress }}%"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-2 text-muted small">
+                    <span>{{ active_sprint.start_date.strftime('%b %d') }}</span>
+                    <span>{{ active_sprint.end_date.strftime('%b %d') }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Project Details -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Project Details</h5>
+                {% if current_user.can_manage_project(project) %}
+                <a href="{{ url_for('projects.edit', project_id=project.id) }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Key</dt>
+                    <dd class="col-7">{{ project.key }}</dd>
+                    
+                    <dt class="col-5">Lead</dt>
+                    <dd class="col-7">{{ project.lead.username if project.lead else '-' }}</dd>
+                    
+                    <dt class="col-5">Created</dt>
+                    <dd class="col-7">{{ project.created_at.strftime('%b %d, %Y') }}</dd>
+                    
+                    <dt class="col-5">GitHub</dt>
+                    <dd class="col-7">
+                        {% if project.github_repo %}
+                            <a href="https://github.com/{{ project.github_repo }}" target="_blank">
+                                <i class="bi bi-github"></i> {{ project.github_repo }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">Not connected</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-5">Slack</dt>
+                    <dd class="col-7">
+                        {% if project.slack_channel %}
+                            <i class="bi bi-slack"></i> #{{ project.slack_channel }}
+                        {% else %}
+                            <span class="text-muted">Not connected</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Team Members -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Team Members</h5>
+                {% if current_user.can_manage_project(project) %}
+                <a href="{{ url_for('projects.members', project_id=project.id) }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-gear"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for member in project.members[:5] %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="user-avatar-sm">{{ member.username[0].upper() }}</div>
+                            <div>
+                                <div>{{ member.username }}</div>
+                                <small class="text-muted">{{ member.role.value|title }}</small>
+                            </div>
+                        </div>
+                        {% if member.id == project.lead_id %}
+                            <span class="badge bg-primary">Lead</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    {% if project.members.count() > 5 %}
+                    <li class="list-group-item text-center">
+                        <a href="{{ url_for('projects.members', project_id=project.id) }}">
+                            View all {{ project.members.count() }} members
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Labels -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Labels</h5>
+                {% if current_user.can_manage_project(project) %}
+                <a href="{{ url_for('projects.labels', project_id=project.id) }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-gear"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% for label in project.labels %}
+                <span class="badge me-1 mb-1" style="background-color: {{ label.color }};">
+                    {{ label.name }}
+                </span>
+                {% else %}
+                <span class="text-muted">No labels defined</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

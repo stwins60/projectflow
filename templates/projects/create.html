@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Create Project - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                <li class="breadcrumb-item active">Create</li>
+            </ol>
+        </nav>
+        <h1>Create Project</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('projects.create') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   placeholder="My Awesome Project">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="key" class="form-label">Key <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="key" name="key" required 
+                                   placeholder="MAP" maxlength="10" style="text-transform: uppercase;">
+                            <small class="text-muted">Used in issue IDs (e.g., MAP-123)</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Brief description of the project"></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="lead_id" class="form-label">Project Lead</label>
+                            <select class="form-select" id="lead_id" name="lead_id">
+                                <option value="">Select lead...</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if user.id == current_user.id %}selected{% endif %}>
+                                    {{ user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="color" class="form-label">Project Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="color" name="color" value="#6366f1">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="bi bi-github"></i> GitHub Integration</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="github_repo" class="form-label">GitHub Repository</label>
+                            <input type="text" class="form-control" id="github_repo" name="github_repo"
+                                   placeholder="owner/repository">
+                            <small class="text-muted">Link issues to GitHub PRs and commits</small>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="github_enabled" name="github_enabled">
+                                <label class="form-check-label" for="github_enabled">Enable GitHub Sync</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="bi bi-slack"></i> Slack Integration</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="slack_channel" class="form-label">Slack Channel</label>
+                            <div class="input-group">
+                                <span class="input-group-text">#</span>
+                                <input type="text" class="form-control" id="slack_channel" name="slack_channel"
+                                       placeholder="project-channel">
+                            </div>
+                            <small class="text-muted">Receive issue notifications in Slack</small>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="slack_enabled" name="slack_enabled">
+                                <label class="form-check-label" for="slack_enabled">Enable Slack Notifications</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Create Project
+                        </button>
+                        <a href="{{ url_for('projects.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li class="mb-2">
+                        <strong>Project Key:</strong> A short unique identifier used in issue IDs. 
+                        Choose something memorable (e.g., "PROJ", "WEB", "API").
+                    </li>
+                    <li class="mb-2">
+                        <strong>GitHub Integration:</strong> Connect to sync PRs and commits with issues.
+                        Reference issues in commit messages like "Fixes MAP-123".
+                    </li>
+                    <li>
+                        <strong>Slack Integration:</strong> Get notified when issues are created, 
+                        updated, or completed.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-generate project key from name
+document.getElementById('name').addEventListener('input', function() {
+    const keyField = document.getElementById('key');
+    if (!keyField.value || keyField.dataset.autoGenerated === 'true') {
+        const words = this.value.split(' ').filter(w => w.length > 0);
+        let key = '';
+        if (words.length === 1) {
+            key = words[0].substring(0, 4).toUpperCase();
+        } else {
+            key = words.slice(0, 3).map(w => w[0]).join('').toUpperCase();
+        }
+        keyField.value = key;
+        keyField.dataset.autoGenerated = 'true';
+    }
+});
+
+document.getElementById('key').addEventListener('input', function() {
+    this.dataset.autoGenerated = 'false';
+    this.value = this.value.toUpperCase();
+});
+</script>
+{% endblock %}

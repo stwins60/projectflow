@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Registration - {{ app_name }}{% endblock %}
+
+{% block guest_content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo" class="auth-logo">
+            <h1>🎉 Complete Your Registration</h1>
+            <p>You've been invited to join {{ app_name }}!</p>
+        </div>
+        
+        <!-- Invitation Details -->
+        <div class="alert alert-info mb-4">
+            <div class="mb-2">
+                <strong>📧 Email:</strong> {{ invitation.email }}
+            </div>
+            <div class="mb-2">
+                <strong>👤 Role:</strong> {{ invitation.role.value.replace('_', ' ').title() }}
+            </div>
+            <div>
+                <strong>👋 Invited by:</strong> {{ invitation.invited_by.username }}
+            </div>
+        </div>
+        
+        <form method="POST" action="{{ url_for('auth.register_with_invitation', token=invitation.token) }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="first_name" name="first_name" 
+                               placeholder="First name">
+                        <label for="first_name">First name</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="last_name" name="last_name" 
+                               placeholder="Last name">
+                        <label for="last_name">Last name</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="username" name="username" 
+                       placeholder="Username" required>
+                <label for="username">Username</label>
+                <small class="form-text text-muted">At least 3 characters</small>
+            </div>
+            
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="email" name="email" 
+                       value="{{ invitation.email }}" readonly disabled style="background-color: #f0f0f0;">
+                <label for="email">Email address</label>
+                <small class="form-text text-muted">This is your invited email address</small>
+            </div>
+            
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" name="password" 
+                       placeholder="Password" required minlength="8">
+                <label for="password">Create Password</label>
+                <small class="form-text text-muted">At least 8 characters</small>
+            </div>
+            
+            <div class="form-floating mb-4">
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                       placeholder="Confirm password" required>
+                <label for="confirm_password">Confirm password</label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+                <i class="bi bi-check-circle"></i> Complete Registration
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.auth-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    max-width: 500px;
+    width: 100%;
+    padding: 40px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-logo {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 20px;
+}
+
+.auth-header h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.auth-header p {
+    color: #666;
+    margin-bottom: 0;
+}
+
+.auth-form .form-floating:not(:last-child) {
+    margin-bottom: 15px;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.auth-footer p {
+    margin: 0;
+    color: #666;
+}
+
+.auth-footer a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+small.form-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+}
+</style>
+{% endblock %}

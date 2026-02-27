@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Versions/Releases - {{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-tags"></i> Versions & Releases</h1>
+        <p class="text-muted">{{ project.name }} - Plan and track software releases</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createVersionModal">
+            <i class="bi bi-plus-lg"></i> Create Version
+        </button>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for version in versions %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-tag"></i> {{ version.name }}
+                        </h5>
+                        <span class="badge 
+                            {% if version.status == 'released' %}bg-success
+                            {% elif version.status == 'archived' %}bg-secondary
+                            {% else %}bg-primary{% endif %}">
+                            {{ version.status.replace('_', ' ').title() }}
+                        </span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if not version.released %}
+                            <li>
+                                <form method="POST" action="{{ url_for('projects.versions', project_id=project.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="action" value="release">
+                                    <input type="hidden" name="version_id" value="{{ version.id }}">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-rocket"></i> Release
+                                    </button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li>
+                                <form method="POST" action="{{ url_for('projects.versions', project_id=project.id) }}"
+                                      onsubmit="return confirm('Delete this version?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="version_id" value="{{ version.id }}">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                {% if version.description %}
+                <p class="card-text text-muted small mb-3">{{ version.description }}</p>
+                {% endif %}
+                
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Completion</small>
+                        <small class="fw-bold">{{ version.progress }}%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ version.progress }}%"
+                             aria-valuenow="{{ version.progress }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="d-flex justify-content-between text-muted small">
+                    <span>
+                        <i class="bi bi-list-task"></i> {{ version.issues.count() }} issues
+                    </span>
+                    {% if version.release_date %}
+                    <span>
+                        <i class="bi bi-calendar-check"></i> {{ version.release_date.strftime('%b %d, %Y') }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not versions %}
+<div class="text-center py-5">
+    <i class="bi bi-tags" style="font-size: 4rem; color: var(--text-muted);"></i>
+    <h4 class="mt-3">No Versions Yet</h4>
+    <p class="text-muted">Create versions to plan and track software releases.</p>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createVersionModal">
+        <i class="bi bi-plus-lg"></i> Create Version
+    </button>
+</div>
+{% endif %}
+
+<!-- Create Version Modal -->
+<div class="modal fade" id="createVersionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-tags"></i> Create Version
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('projects.versions', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="create">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Version Name *</label>
+                        <input type="text" class="form-control" name="name" 
+                               placeholder="e.g., v1.0.0, Release 2024.1" required>
+                        <small class="form-text text-muted">
+                            Use semantic versioning (e.g., v1.2.3) or any naming convention
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"
+                                  placeholder="Describe what's included in this release..."></textarea>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Tip:</strong> Use versions to group issues by release and track release progress.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Create Version
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

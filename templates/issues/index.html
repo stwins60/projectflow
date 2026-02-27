@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Issues - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Issues</h1>
+        <p class="text-muted">Browse and manage all issues</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('issues.kanban') }}" class="btn btn-outline-primary">
+            <i class="bi bi-kanban"></i> Kanban
+        </a>
+        <a href="{{ url_for('issues.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Issue
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('issues.index') }}" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" class="form-control" placeholder="Search issues..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Project</label>
+                <select name="project" class="form-select">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {{ 'selected' if current_project == project.id }}>
+                            {{ project.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="all" {{ 'selected' if current_status == 'all' }}>All Status</option>
+                    <option value="backlog" {{ 'selected' if current_status == 'backlog' }}>Backlog</option>
+                    <option value="todo" {{ 'selected' if current_status == 'todo' }}>To Do</option>
+                    <option value="in_progress" {{ 'selected' if current_status == 'in_progress' }}>In Progress</option>
+                    <option value="code_review" {{ 'selected' if current_status == 'code_review' }}>Code Review</option>
+                    <option value="done" {{ 'selected' if current_status == 'done' }}>Done</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-select">
+                    <option value="all" {{ 'selected' if current_priority == 'all' }}>All Priority</option>
+                    <option value="critical" {{ 'selected' if current_priority == 'critical' }}>Critical</option>
+                    <option value="high" {{ 'selected' if current_priority == 'high' }}>High</option>
+                    <option value="medium" {{ 'selected' if current_priority == 'medium' }}>Medium</option>
+                    <option value="low" {{ 'selected' if current_priority == 'low' }}>Low</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-filter"></i> Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Issues List -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Issue</th>
+                        <th>Project</th>
+                        <th>Reporter</th>
+                        <th>Assignee</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in issues.items %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('issues.view', issue_id=issue.id) }}" class="issue-link">
+                                <span class="issue-key">{{ issue.key }}</span>
+                                <span class="issue-title">{{ issue.title }}</span>
+                            </a>
+                            {% for label in issue.labels[:2] %}
+                                <span class="label-badge" style="background: {{ label.color }}20; color: {{ label.color }};">
+                                    {{ label.name }}
+                                </span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <span class="project-badge" style="border-color: {{ issue.project.color }};">
+                                {{ issue.project.key }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="user-avatar-sm" title="{{ issue.reporter.username }}">
+                                {{ issue.reporter.username[0].upper() }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if issue.assignee %}
+                                <div class="user-avatar-sm" title="{{ issue.assignee.username }}">
+                                    {{ issue.assignee.username[0].upper() }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ issue.status.value }}">
+                                {{ issue.status.value.replace('_', ' ').title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-{{ issue.priority.value }}">
+                                {{ issue.priority.value.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ issue.updated_at.strftime('%b %d') }}</small>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-3 mb-0">No issues found</p>
+                            <a href="{{ url_for('issues.create') }}" class="btn btn-primary mt-3">
+                                Create your first issue
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% if issues.pages > 1 %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination mb-0 justify-content-center">
+                {% if issues.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('issues.index', page=issues.prev_num, status=current_status, priority=current_priority, project=current_project, search=search) }}">
+                            Previous
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in issues.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == issues.page }}">
+                            <a class="page-link" href="{{ url_for('issues.index', page=page_num, status=current_status, priority=current_priority, project=current_project, search=search) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if issues.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('issues.index', page=issues.next_num, status=current_status, priority=current_priority, project=current_project, search=search) }}">
+                            Next
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

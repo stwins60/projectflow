@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Sprints - {{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.view', project_id=project.id) }}">{{ project.key }}</a></li>
+                <li class="breadcrumb-item active">Sprints</li>
+            </ol>
+        </nav>
+        <h1>Sprints</h1>
+        <p class="text-muted">Plan and track development cycles</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSprintModal">
+        <i class="bi bi-plus-lg"></i> New Sprint
+    </button>
+</div>
+
+<!-- Active Sprints -->
+{% set active_sprints = sprints|selectattr('is_active')|list %}
+{% if active_sprints %}
+<h5 class="mb-3"><i class="bi bi-lightning text-warning"></i> Active Sprints</h5>
+<div class="row g-4 mb-5">
+    {% for sprint in active_sprints %}
+    <div class="col-lg-6">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ sprint.name }}</h5>
+                    <span class="badge bg-light text-primary">Active</span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if sprint.goal %}
+                    <p class="mb-3">{{ sprint.goal }}</p>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between text-muted small mb-2">
+                    <span>{{ sprint.start_date.strftime('%b %d') }} - {{ sprint.end_date.strftime('%b %d, %Y') }}</span>
+                    <span>{{ sprint.days_remaining }} days remaining</span>
+                </div>
+                
+                <div class="progress mb-3" style="height: 10px;">
+                    <div class="progress-bar" style="width: {{ sprint.progress }}%;"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span><strong>{{ sprint.completed_issues }}</strong> / {{ sprint.total_issues }} issues completed</span>
+                    <span class="text-muted">{{ sprint.progress|int }}%</span>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('issues.index', project_id=project.id, sprint_id=sprint.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-list-task"></i> View Issues
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editSprint({{ sprint.id }}, '{{ sprint.name }}', '{{ sprint.start_date.strftime('%Y-%m-%d') }}', '{{ sprint.end_date.strftime('%Y-%m-%d') }}', '{{ sprint.goal or '' }}')">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <form method="POST" action="{{ url_for('projects.sprints', project_id=project.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="end">
+                        <input type="hidden" name="sprint_id" value="{{ sprint.id }}">
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <i class="bi bi-check-lg"></i> Complete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Upcoming Sprints -->
+{% set upcoming_sprints = sprints|selectattr('is_upcoming')|list %}
+{% if upcoming_sprints %}
+<h5 class="mb-3"><i class="bi bi-calendar"></i> Upcoming Sprints</h5>
+<div class="row g-4 mb-5">
+    {% for sprint in upcoming_sprints %}
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ sprint.name }}</h5>
+                    <span class="badge bg-info">Upcoming</span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if sprint.goal %}
+                    <p class="mb-3">{{ sprint.goal }}</p>
+                {% endif %}
+                <div class="text-muted small mb-2">
+                    {{ sprint.start_date.strftime('%b %d') }} - {{ sprint.end_date.strftime('%b %d, %Y') }}
+                </div>
+                <span>{{ sprint.total_issues }} issues planned</span>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('projects.sprints', project_id=project.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="start">
+                        <input type="hidden" name="sprint_id" value="{{ sprint.id }}">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="bi bi-play"></i> Start Sprint
+                        </button>
+                    </form>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editSprint({{ sprint.id }}, '{{ sprint.name }}', '{{ sprint.start_date.strftime('%Y-%m-%d') }}', '{{ sprint.end_date.strftime('%Y-%m-%d') }}', '{{ sprint.goal or '' }}')">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Completed Sprints -->
+{% set completed_sprints = sprints|selectattr('is_completed')|list %}
+{% if completed_sprints %}
+<h5 class="mb-3"><i class="bi bi-check-circle text-success"></i> Completed Sprints</h5>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Sprint</th>
+                    <th>Duration</th>
+                    <th>Issues</th>
+                    <th>Completion</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sprint in completed_sprints %}
+                <tr>
+                    <td>
+                        <strong>{{ sprint.name }}</strong>
+                        {% if sprint.goal %}
+                            <br><small class="text-muted">{{ sprint.goal[:50] }}...</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ sprint.start_date.strftime('%b %d') }} - {{ sprint.end_date.strftime('%b %d') }}</td>
+                    <td>{{ sprint.completed_issues }}/{{ sprint.total_issues }}</td>
+                    <td>
+                        <div class="progress" style="width: 100px; height: 6px;">
+                            <div class="progress-bar bg-success" style="width: {{ sprint.progress }}%;"></div>
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('issues.index', project_id=project.id, sprint_id=sprint.id) }}" class="btn btn-sm btn-light">
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if not sprints %}
+<div class="text-center py-5">
+    <i class="bi bi-lightning" style="font-size: 4rem; color: var(--text-muted);"></i>
+    <h4 class="mt-3">No sprints yet</h4>
+    <p class="text-muted">Create sprints to organize your work into time-boxed iterations</p>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSprintModal">
+        <i class="bi bi-plus-lg"></i> Create First Sprint
+    </button>
+</div>
+{% endif %}
+
+<!-- Create Sprint Modal -->
+<div class="modal fade" id="createSprintModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('projects.sprints', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="create">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Sprint</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Sprint Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required placeholder="Sprint 1">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="goal" class="form-label">Sprint Goal (optional)</label>
+                        <textarea class="form-control" id="goal" name="goal" rows="2" placeholder="What do you want to achieve?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Sprint</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Sprint Modal -->
+<div class="modal fade" id="editSprintModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editSprintForm" action="{{ url_for('projects.sprints', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="sprint_id" id="edit_sprint_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Sprint</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Sprint Name</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="edit_start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="edit_start_date" name="start_date" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="edit_end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="edit_end_date" name="end_date" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_goal" class="form-label">Sprint Goal</label>
+                        <textarea class="form-control" id="edit_goal" name="goal" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editSprint(id, name, startDate, endDate, goal) {
+    document.getElementById('edit_sprint_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_start_date').value = startDate;
+    document.getElementById('edit_end_date').value = endDate;
+    document.getElementById('edit_goal').value = goal;
+    new bootstrap.Modal(document.getElementById('editSprintModal')).show();
+}
+
+// Set default dates for new sprint
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const twoWeeksLater = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+    document.getElementById('start_date').valueAsDate = today;
+    document.getElementById('end_date').valueAsDate = twoWeeksLater;
+});
+</script>
+{% endblock %}

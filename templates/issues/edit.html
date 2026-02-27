@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ issue.key }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('issues.view', issue_id=issue.id) }}" class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div style="flex: 1;">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge" style="background: #e3e3e3; color: #5e6c84; font-weight: 700; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                    {{ issue.key }}
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge" style="background-color: {{ issue.project.color }}; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                    {{ issue.project.name }}
+                </span>
+                <span class="badge badge-outline-{{ issue.issue_type.value }}" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="bi bi-{{ 'bug-fill' if issue.issue_type.value == 'bug' else ('lightbulb' if issue.issue_type.value == 'feature' else ('book' if issue.issue_type.value == 'story' else 'check-square')) }}"></i>
+                    {{ issue.issue_type.value.replace('_', ' ').title() }}
+                </span>
+            </div>
+            <h1 class="mb-0" style="font-size: 1.5rem; font-weight: 600; color: #172B4D;">Edit Issue</h1>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('issues.edit', issue_id=issue.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" required 
+                               value="{{ issue.title }}" placeholder="Brief description of the issue">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="6" 
+                                  placeholder="Detailed description of the issue...">{{ issue.description or '' }}</textarea>
+                    </div>
+                    
+                    <!-- Acceptance Criteria -->
+                    <div class="mb-3" id="acceptanceCriteriaSection">
+                        <label class="form-label">Acceptance Criteria</label>
+                        <textarea name="acceptance_criteria" class="form-control" rows="4" 
+                                  placeholder="Define the conditions that must be met for this issue to be considered complete...&#10;&#10;Example:&#10;- User can login with email/password&#10;- Error message shown for invalid credentials&#10;- Session persists for 24 hours">{{ issue.acceptance_criteria or '' }}</textarea>
+                        <small class="text-muted">What conditions must be met for this to be accepted?</small>
+                    </div>
+                    
+                    <!-- Technical Requirements -->
+                    <div class="mb-3" id="technicalRequirementsSection">
+                        <label class="form-label">Technical Requirements</label>
+                        <textarea name="technical_requirements" class="form-control" rows="3" 
+                                  placeholder="Technical specifications, APIs, dependencies...&#10;&#10;Example:&#10;- Use OAuth2 for authentication&#10;- PostgreSQL for data storage&#10;- Rate limit: 100 requests/minute">{{ issue.technical_requirements or '' }}</textarea>
+                        <small class="text-muted">Technical specifications and implementation details</small>
+                    </div>
+                    
+                    <!-- Scope -->
+                    <div class="mb-3" id="scopeSection">
+                        <label class="form-label">Scope</label>
+                        <textarea name="scope" class="form-control" rows="3" 
+                                  placeholder="What is included/excluded from this work...&#10;&#10;In Scope:&#10;- Feature X&#10;- Integration with Y&#10;&#10;Out of Scope:&#10;- Mobile app support">{{ issue.scope or '' }}</textarea>
+                        <small class="text-muted">Define what is and isn't included in this work</small>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Issue Type</label>
+                            <select name="issue_type" id="issueType" class="form-select">
+                                <option value="task" {{ 'selected' if issue.issue_type.value == 'task' }}>Task</option>
+                                <option value="bug" {{ 'selected' if issue.issue_type.value == 'bug' }}>Bug</option>
+                                <option value="feature" {{ 'selected' if issue.issue_type.value == 'feature' }}>Feature</option>
+                                <option value="story" {{ 'selected' if issue.issue_type.value == 'story' }}>Story</option>
+                                <option value="epic" {{ 'selected' if issue.issue_type.value == 'epic' }}>Epic</option>
+                                <option value="sub_task" {{ 'selected' if issue.issue_type.value == 'sub_task' }}>Sub-task</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Priority</label>
+                            <select name="priority" class="form-select">
+                                {% for priority in priorities %}
+                                    <option value="{{ priority.value }}" {{ 'selected' if issue.priority == priority }}>
+                                        {{ priority.value.title() }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                {% for status in statuses %}
+                                    <option value="{{ status.value }}" {{ 'selected' if issue.status == status }}>
+                                        {{ status.value.replace('_', ' ').title() }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Assignee</label>
+                            <select name="assignee_id" class="form-select">
+                                <option value="">Unassigned</option>
+                                {% for user in users %}
+                                    <option value="{{ user.id }}" {{ 'selected' if issue.assignee_id == user.id }}>
+                                        {{ user.full_name }} ({{ user.username }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Due Date</label>
+                            <input type="date" name="due_date" class="form-control" 
+                                   value="{{ issue.due_date.strftime('%Y-%m-%d') if issue.due_date else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estimated Hours</label>
+                            <input type="number" name="estimated_hours" class="form-control" step="0.5" min="0"
+                                   value="{{ issue.estimated_hours or '' }}" placeholder="e.g., 8">
+                        </div>
+                    </div>
+                    
+                    <!-- Labels -->
+                    <div class="mb-4">
+                        <label class="form-label">Labels</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for label in labels %}
+                                <label class="label-checkbox">
+                                    <input type="checkbox" name="labels" value="{{ label.id }}" 
+                                           {{ 'checked' if label in issue.labels else '' }}>
+                                    <span class="label-badge" style="background: {{ label.color }}20; color: {{ label.color }}; border: 1px solid {{ label.color }}40;">
+                                        {{ label.name }}
+                                    </span>
+                                </label>
+                            {% endfor %}
+                            {% if not labels %}
+                                <span class="text-muted">No labels available for this project</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                        <a href="{{ url_for('issues.view', issue_id=issue.id) }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom" style="padding: 0.75rem 1rem;">
+                <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 700; color: #172B4D;">
+                    <i class="bi bi-info-circle" style="color: #5e6c84;"></i> Issue Info
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="jira-detail-list">
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Key</span>
+                        <span class="jira-detail-value" style="font-family: 'Courier New', monospace; font-weight: 700;">{{ issue.key }}</span>
+                    </div>
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Project</span>
+                        <span class="jira-detail-value">
+                            <span class="badge" style="background-color: {{ issue.project.color }}; color: white; font-size: 0.75rem;">
+                                {{ issue.project.name }}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Reporter</span>
+                        <span class="jira-detail-value">{{ issue.reporter.full_name }}</span>
+                    </div>
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Created</span>
+                        <span class="jira-detail-value">{{ issue.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                    </div>
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Last Updated</span>
+                        <span class="jira-detail-value">{{ issue.updated_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                    </div>
+                    {% if issue.resolved_at %}
+                    <div class="jira-detail-row">
+                        <span class="jira-detail-label">Resolved</span>
+                        <span class="jira-detail-value">{{ issue.resolved_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3 border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom" style="padding: 0.75rem 1rem;">
+                <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 700; color: #172B4D;">
+                    <i class="bi bi-lightbulb" style="color: #5e6c84;"></i> Tips
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <ul class="mb-0 ps-3 small" style="line-height: 1.8;">
+                    <li class="mb-2">Use clear, descriptive titles</li>
+                    <li class="mb-2">Include acceptance criteria for features</li>
+                    <li class="mb-2">Define technical requirements</li>
+                    <li class="mb-2">Set realistic due dates</li>
+                    <li>Use labels to categorize issues</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}<script>
+// Track assignee changes and require reassignment reason
+const assigneeSelect = document.getElementById('assigneeSelect');
+const reassignmentSection = document.getElementById('reassignmentReasonSection');
+const reassignmentReason = document.getElementById('reassignmentReason');
+const originalAssignee = assigneeSelect.dataset.originalAssignee;
+
+assigneeSelect.addEventListener('change', function() {
+    const currentValue = this.value;
+    
+    // Show reassignment reason if assignee changed
+    if (currentValue !== originalAssignee) {
+        reassignmentSection.style.display = 'block';
+        reassignmentReason.required = true;
+    } else {
+        reassignmentSection.style.display = 'none';
+        reassignmentReason.required = false;
+        reassignmentReason.value = '';
+    }
+});
+
+// Validate form on submit
+const form = document.querySelector('form');
+form.addEventListener('submit', function(e) {
+    const currentAssignee = assigneeSelect.value;
+    
+    if (currentAssignee !== originalAssignee && !reassignmentReason.value.trim()) {
+        e.preventDefault();
+        alert('Please provide a reason for reassigning this issue.');
+        reassignmentReason.focus();
+        return false;
+    }
+});
+</script><style>
+    .label-checkbox {
+        cursor: pointer;
+        display: inline-block;
+        margin: 0;
+    }
+    
+    .label-checkbox input[type="checkbox"] {
+        display: none;
+    }
+    
+    .label-checkbox .label-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: inline-block;
+        transition: all 0.2s;
+        opacity: 0.7;
+    }
+    
+    .label-checkbox input[type="checkbox"]:checked + .label-badge {
+        opacity: 1;
+        box-shadow: 0 0 0 2px currentColor;
+        font-weight: 600;
+    }
+    
+    .label-checkbox:hover .label-badge {
+        opacity: 1;
+        transform: translateY(-1px);
+    }
+    
+    .issue-key-large {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6c757d;
+        padding: 0.25rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    .badge-outline-bug {
+        background: #dc354520;
+        color: #dc3545;
+        border: 1px solid #dc354540;
+    }
+    
+    .badge-outline-feature {
+        background: #ffc10720;
+        color: #ca8a04;
+        border: 1px solid #ffc10740;
+    }
+    
+    .badge-outline-story {
+        background: #19875420;
+        color: #198754;
+        border: 1px solid #19875440;
+    }
+    
+    .badge-outline-task {
+        background: #0d6efd20;
+        color: #0d6efd;
+        border: 1px solid #0d6efd40;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{% endblock %}

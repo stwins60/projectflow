@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Labels - {{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.view', project_id=project.id) }}">{{ project.key }}</a></li>
+                <li class="breadcrumb-item active">Labels</li>
+            </ol>
+        </nav>
+        <h1>Issue Labels</h1>
+        <p class="text-muted">Organize issues with custom labels</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLabelModal">
+        <i class="bi bi-plus-lg"></i> New Label
+    </button>
+</div>
+
+<div class="row g-4">
+    {% for label in labels %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="badge mb-2" style="background-color: {{ label.color }}; font-size: 1rem;">
+                            {{ label.name }}
+                        </span>
+                        {% if label.description %}
+                            <p class="text-muted small mb-0">{{ label.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button class="dropdown-item" onclick="editLabel({{ label.id }}, '{{ label.name }}', '{{ label.color }}', '{{ label.description or '' }}')">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                            </li>
+                            <li>
+                                <form method="POST" action="{{ url_for('projects.labels', project_id=project.id) }}"
+                                      onsubmit="return confirm('Delete this label? It will be removed from all issues.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="label_id" value="{{ label.id }}">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-3 text-muted small">
+                    <i class="bi bi-list-task"></i> {{ label.issues.count() }} issues
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="bi bi-tags" style="font-size: 4rem; color: var(--text-muted);"></i>
+            <h4 class="mt-3">No labels yet</h4>
+            <p class="text-muted">Create labels to organize your issues</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLabelModal">
+                <i class="bi bi-plus-lg"></i> Create First Label
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Create Label Modal -->
+<div class="modal fade" id="createLabelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('projects.labels', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="create">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Label</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Label Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required placeholder="bug, feature, etc.">
+                    </div>
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Color</label>
+                        <div class="d-flex gap-2">
+                            <input type="color" class="form-control form-control-color" id="color" name="color" value="#6366f1">
+                            <div class="d-flex gap-1 align-items-center">
+                                <button type="button" class="color-preset" data-color="#ef4444" style="background: #ef4444;"></button>
+                                <button type="button" class="color-preset" data-color="#f97316" style="background: #f97316;"></button>
+                                <button type="button" class="color-preset" data-color="#eab308" style="background: #eab308;"></button>
+                                <button type="button" class="color-preset" data-color="#22c55e" style="background: #22c55e;"></button>
+                                <button type="button" class="color-preset" data-color="#06b6d4" style="background: #06b6d4;"></button>
+                                <button type="button" class="color-preset" data-color="#6366f1" style="background: #6366f1;"></button>
+                                <button type="button" class="color-preset" data-color="#a855f7" style="background: #a855f7;"></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (optional)</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Brief description">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Label</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Label Modal -->
+<div class="modal fade" id="editLabelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('projects.labels', project_id=project.id) }}" id="editLabelForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="label_id" id="edit_label_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Label</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Label Name</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_color" class="form-label">Color</label>
+                        <input type="color" class="form-control form-control-color" id="edit_color" name="color">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="edit_description" name="description">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.color-preset {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+.color-preset:hover {
+    border-color: rgba(0,0,0,0.3);
+}
+</style>
+
+<script>
+// Color preset selection
+document.querySelectorAll('.color-preset').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const color = this.dataset.color;
+        const modal = this.closest('.modal');
+        modal.querySelector('input[type="color"]').value = color;
+    });
+});
+
+// Edit label
+function editLabel(id, name, color, description) {
+    document.getElementById('edit_label_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_color').value = color;
+    document.getElementById('edit_description').value = description;
+    new bootstrap.Modal(document.getElementById('editLabelModal')).show();
+}
+</script>
+{% endblock %}

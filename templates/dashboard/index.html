@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome back, {{ current_user.first_name or current_user.username }}!</h1>
+        <p class="text-muted">Here's what's happening with your projects today.</p>
+    </div>
+    <a href="{{ url_for('issues.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> New Issue
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-subtle">
+                <i class="bi bi-list-task text-primary"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.assigned }}</span>
+                <span class="stat-label">Assigned Issues</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-subtle">
+                <i class="bi bi-clock text-warning"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.overdue }}</span>
+                <span class="stat-label">Overdue</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-subtle">
+                <i class="bi bi-arrow-repeat text-info"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.in_progress }}</span>
+                <span class="stat-label">In Progress</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-subtle">
+                <i class="bi bi-check-circle text-success"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.completed_this_week }}</span>
+                <span class="stat-label">Completed This Week</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Charts -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Weekly Progress</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="weeklyChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        <!-- Assigned Issues -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Your Issues</h5>
+                <a href="{{ url_for('dashboard.my_issues') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Issue</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in assigned_issues %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('issues.view', issue_id=issue.id) }}" class="issue-link">
+                                        <span class="issue-key">{{ issue.key }}</span>
+                                        {{ issue.title }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ issue.status.value }}">
+                                        {{ issue.status.value.replace('_', ' ').title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="priority-badge priority-{{ issue.priority.value }}">
+                                        {{ issue.priority.value.title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if issue.due_date %}
+                                        <span class="{{ 'text-danger' if issue.is_overdue else '' }}">
+                                            {{ issue.due_date.strftime('%b %d') }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    No issues assigned to you
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Task Distribution -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Task Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="taskChart" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Overdue Issues -->
+        {% if overdue_issues %}
+        <div class="card mb-4 border-warning">
+            <div class="card-header bg-warning-subtle">
+                <h5 class="mb-0 text-warning">
+                    <i class="bi bi-exclamation-triangle"></i> Overdue Issues
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for issue in overdue_issues[:5] %}
+                    <li class="list-group-item">
+                        <a href="{{ url_for('issues.view', issue_id=issue.id) }}" class="text-decoration-none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="issue-key">{{ issue.key }}</span>
+                                    <small class="d-block text-truncate" style="max-width: 200px;">
+                                        {{ issue.title }}
+                                    </small>
+                                </div>
+                                <small class="text-danger">
+                                    {{ issue.due_date.strftime('%b %d') }}
+                                </small>
+                            </div>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Projects -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Your Projects</h5>
+                <a href="{{ url_for('projects.index') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for project in user_projects %}
+                    <li class="list-group-item">
+                        <a href="{{ url_for('projects.view', project_id=project.id) }}" class="text-decoration-none">
+                            <div class="d-flex align-items-center">
+                                <div class="project-color-dot" style="background: {{ project.color }}"></div>
+                                <div>
+                                    <strong>{{ project.name }}</strong>
+                                    <small class="d-block text-muted">{{ project.key }}</small>
+                                </div>
+                                <span class="badge bg-secondary ms-auto">
+                                    {{ project.open_issues_count }} open
+                                </span>
+                            </div>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center py-4 text-muted">
+                        No projects yet
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Weekly Progress Chart
+    const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+    fetch('{{ url_for("dashboard.weekly_stats") }}')
+        .then(response => response.json())
+        .then(data => {
+            new Chart(weeklyCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{
+                        label: 'Issues Completed',
+                        data: data.map(d => d.completed),
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    
+    // Task Distribution Chart
+    const taskCtx = document.getElementById('taskChart').getContext('2d');
+    new Chart(taskCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Backlog', 'To Do', 'In Progress', 'Code Review', 'Done'],
+            datasets: [{
+                data: [
+                    {{ task_distribution.backlog }},
+                    {{ task_distribution.todo }},
+                    {{ task_distribution.in_progress }},
+                    {{ task_distribution.code_review }},
+                    {{ task_distribution.done }}
+                ],
+                backgroundColor: [
+                    '#94a3b8',
+                    '#6366f1',
+                    '#f59e0b',
+                    '#8b5cf6',
+                    '#22c55e'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

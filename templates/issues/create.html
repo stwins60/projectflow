@@ -1,0 +1,907 @@
+{% extends "base.html" %}
+
+{% block title %}Create Issue - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Create Issue</h1>
+        <p class="text-muted">Create a new issue to track work</p>
+    </div>
+</div>
+
+<!-- AI Generation Card -->
+<div class="card mb-4 border-primary" id="aiGeneratorCard" style="display: none;">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+        <i class="bi bi-stars me-2"></i>
+        <span>AI Issue Generator</span>
+        <button type="button" class="btn-close btn-close-white ms-auto" onclick="toggleAiGenerator()" aria-label="Close"></button>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">Describe what you want to create and AI will generate a complete issue for you.</p>
+        <div class="mb-3">
+            <label class="form-label">What would you like to create?</label>
+            <textarea id="aiPrompt" class="form-control" rows="3" 
+                placeholder="Example: A user authentication feature with login, logout, and password reset functionality using OAuth2"></textarea>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label small">Issue Type</label>
+                <select id="aiIssueType" class="form-select form-select-sm">
+                    <option value="task">Task</option>
+                    <option value="bug">Bug</option>
+                    <option value="feature" selected>Feature</option>
+                    <option value="story">Story</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Context (optional)</label>
+                <input type="text" id="aiContext" class="form-control form-control-sm" placeholder="Project context...">
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary" onclick="generateIssue()" id="generateBtn">
+                <i class="bi bi-stars me-1"></i> Generate Issue
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="toggleAiGenerator()">Cancel</button>
+        </div>
+        <div id="aiError" class="alert alert-danger mt-3 d-none"></div>
+        <div id="aiLoading" class="text-center mt-3 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Generating...</span>
+            </div>
+            <p class="text-muted mt-2 mb-0">Generating issue content...</p>
+        </div>
+    </div>
+</div>
+
+<!-- AI Toggle Button -->
+<div class="mb-3" id="aiToggleSection">
+    <button type="button" class="btn btn-outline-primary" onclick="toggleAiGenerator()" id="aiToggleBtn" style="display: none;">
+        <i class="bi bi-stars me-1"></i> Generate with AI
+    </button>
+    <span class="text-muted small ms-2 d-none" id="aiUnavailable">
+        <i class="bi bi-info-circle"></i> AI generation not available
+    </span>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('issues.create') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Project <span class="text-danger">*</span></label>
+                        <select name="project_id" class="form-select" required id="projectSelect">
+                            <option value="">Select a project</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}" data-labels='[{% for label in project.labels %}{"id": {{ label.id }}, "name": "{{ label.name }}", "color": "{{ label.color }}"}{% if not loop.last %},{% endif %}{% endfor %}]'>
+                                    {{ project.name }} ({{ project.key }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" required 
+                               placeholder="Brief description of the issue">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            <span>Description</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary ai-btn d-none" onclick="enhanceDescription()">
+                                <i class="bi bi-stars"></i> Enhance
+                            </button>
+                        </label>
+                        <textarea name="description" class="form-control" rows="4" 
+                                  placeholder="Detailed description of the issue..."></textarea>
+                    </div>
+                    
+                    <!-- Acceptance Criteria (show for features/stories) -->
+                    <div class="mb-3" id="acceptanceCriteriaSection">
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            <span>Acceptance Criteria</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary ai-btn d-none" onclick="suggestCriteria()">
+                                <i class="bi bi-stars"></i> Suggest
+                            </button>
+                        </label>
+                        <textarea name="acceptance_criteria" class="form-control" rows="4" 
+                                  placeholder="Define the conditions that must be met for this issue to be considered complete...&#10;&#10;Example:&#10;- User can login with email/password&#10;- Error message shown for invalid credentials&#10;- Session persists for 24 hours"></textarea>
+                        <small class="text-muted">What conditions must be met for this to be accepted?</small>
+                    </div>
+                    
+                    <!-- Technical Requirements -->
+                    <div class="mb-3" id="technicalRequirementsSection">
+                        <label class="form-label">Technical Requirements</label>
+                        <textarea name="technical_requirements" class="form-control" rows="3" 
+                                  placeholder="Technical specifications, APIs, dependencies...&#10;&#10;Example:&#10;- Use OAuth2 for authentication&#10;- PostgreSQL for data storage&#10;- Rate limit: 100 requests/minute"></textarea>
+                        <small class="text-muted">Technical specifications and implementation details</small>
+                    </div>
+                    
+                    <!-- Scope -->
+                    <div class="mb-3" id="scopeSection">
+                        <label class="form-label">Scope</label>
+                        <textarea name="scope" class="form-control" rows="3" 
+                                  placeholder="What is included/excluded from this work...&#10;&#10;In Scope:&#10;- Feature X&#10;- Integration with Y&#10;&#10;Out of Scope:&#10;- Mobile app support"></textarea>
+                        <small class="text-muted">Define what is and isn't included in this work</small>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Issue Type</label>
+                            <select name="issue_type" id="issueType" class="form-select">
+                                <option value="task">Task</option>
+                                <option value="bug">Bug</option>
+                                <option value="feature">Feature</option>
+                                <option value="story">Story</option>
+                                <option value="epic">Epic</option>
+                                <option value="sub_task">Sub-task</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Priority</label>
+                            <select name="priority" class="form-select">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Epic</label>
+                            <select name="epic_id" class="form-select" id="epicSelect">
+                                <option value="">None</option>
+                                {% for epic in epics %}
+                                    <option value="{{ epic.id }}" {{ 'selected' if selected_epic_id == epic.id }}>
+                                        {{ epic.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Link to a larger initiative</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Story Points</label>
+                            <select name="story_points" class="form-select">
+                                <option value="">None</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="5">5</option>
+                                <option value="8">8</option>
+                                <option value="13">13</option>
+                                <option value="21">21</option>
+                            </select>
+                            <small class="text-muted">Effort estimation</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sprint</label>
+                            <select name="sprint_id" class="form-select" id="sprintSelect">
+                                <option value="">Backlog</option>
+                                {% for sprint in sprints %}
+                                    <option value="{{ sprint.id }}">
+                                        {{ sprint.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Version/Release</label>
+                            <select name="version_id" class="form-select" id="versionSelect">
+                                <option value="">None</option>
+                                {% for version in versions %}
+                                    <option value="{{ version.id }}">
+                                        {{ version.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Components</label>
+                        <div id="componentsContainer" class="border rounded p-2" style="min-height: 50px;">
+                            {% if components %}
+                                {% for component in components %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="components" 
+                                           value="{{ component.id }}" id="component{{ component.id }}">
+                                    <label class="form-check-label" for="component{{ component.id }}">
+                                        {{ component.name }}
+                                        {% if component.lead %}
+                                            <small class="text-muted">({{ component.lead.username }})</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Select a project first</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">System components affected</small>
+                    </div>
+                    
+                    <div class="mb-3 d-none" id="parentIssueSection">
+                        <label class="form-label">Parent Issue</label>
+                        <select name="parent_id" class="form-select" id="parentSelect">
+                            <option value="">None</option>
+                        </select>
+                        <small class="text-muted">For sub-tasks only</small>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Assignee</label>
+                            <select name="assignee_id" class="form-select">
+                                <option value="">Unassigned</option>
+                                {% for user in users %}
+                                    <option value="{{ user.id }}">
+                                        {{ user.full_name }} ({{ user.username }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Due Date</label>
+                            <input type="date" name="due_date" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Labels</label>
+                        <div id="labelsContainer" class="d-flex flex-wrap gap-2">
+                            {% if labels %}
+                                {% for label in labels %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="labels" 
+                                           value="{{ label.id }}" id="label{{ label.id }}">
+                                    <label class="form-check-label" for="label{{ label.id }}">
+                                        <span class="badge" style="background-color: {{ label.color }};">{{ label.name }}</span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Select a project first</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Create Issue
+                        </button>
+                        <a href="{{ url_for('issues.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 ps-3" id="tipsList">
+                    <li class="mb-2">Use clear, descriptive titles</li>
+                    <li class="mb-2">Include steps to reproduce for bugs</li>
+                    <li class="mb-2">Define clear acceptance criteria</li>
+                    <li class="mb-2">Set realistic due dates</li>
+                    <li class="mb-2">Assign to the right team member</li>
+                    <li>Use labels to categorize issues</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3" id="issueTypeGuide">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> <span id="guideTitle">Issue Guide</span></h6>
+            </div>
+            <div class="card-body">
+                <div id="guideContent">
+                    <p class="text-muted mb-0">Select an issue type to see specific guidance.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Check AI availability on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkAiAvailability();
+    
+    // Load project data if a project is already selected
+    const projectSelect = document.getElementById('projectSelect');
+    if (projectSelect && projectSelect.value) {
+        console.log('Loading data for pre-selected project:', projectSelect.value);
+        loadProjectData(projectSelect.value);
+    }
+});
+
+function checkAiAvailability() {
+    fetch('/api/ai/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.available) {
+                document.getElementById('aiToggleBtn').style.display = 'inline-block';
+                document.getElementById('aiUnavailable').classList.add('d-none');
+                // Show all AI buttons
+                document.querySelectorAll('.ai-btn').forEach(btn => {
+                    btn.classList.remove('d-none');
+                });
+            } else {
+                document.getElementById('aiToggleBtn').style.display = 'none';
+                document.getElementById('aiUnavailable').classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            document.getElementById('aiToggleBtn').style.display = 'none';
+            document.getElementById('aiUnavailable').classList.remove('d-none');
+        });
+}
+
+function toggleAiGenerator() {
+    const card = document.getElementById('aiGeneratorCard');
+    const toggleBtn = document.getElementById('aiToggleBtn');
+    
+    if (card.style.display === 'none') {
+        card.style.display = 'block';
+        toggleBtn.style.display = 'none';
+        document.getElementById('aiPrompt').focus();
+    } else {
+        card.style.display = 'none';
+        toggleBtn.style.display = 'inline-block';
+    }
+}
+
+function generateIssue() {
+    const prompt = document.getElementById('aiPrompt').value.trim();
+    const issueType = document.getElementById('aiIssueType').value;
+    const context = document.getElementById('aiContext').value.trim();
+    
+    if (!prompt) {
+        showAiError('Please describe what you want to create.');
+        return;
+    }
+    
+    const btn = document.getElementById('generateBtn');
+    const loading = document.getElementById('aiLoading');
+    const errorDiv = document.getElementById('aiError');
+    
+    btn.disabled = true;
+    loading.classList.remove('d-none');
+    errorDiv.classList.add('d-none');
+    
+    fetch('/api/ai/generate-issue', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            prompt: prompt,
+            issue_type: issueType,
+            context: context
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        loading.classList.add('d-none');
+        
+        if (data.success && data.data) {
+            populateForm(data.data, issueType);
+            toggleAiGenerator();
+            showSuccessToast('Issue generated successfully!');
+        } else {
+            showAiError(data.error || 'Failed to generate issue. Please try again.');
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        loading.classList.add('d-none');
+        showAiError('Network error. Please check your connection and try again.');
+        console.error('AI generation error:', error);
+    });
+}
+
+function populateForm(data, issueType) {
+    // Populate title
+    if (data.title) {
+        document.querySelector('input[name="title"]').value = data.title;
+    }
+    
+    // Populate description
+    if (data.description) {
+        document.querySelector('textarea[name="description"]').value = data.description;
+    }
+    
+    // Populate acceptance criteria
+    if (data.acceptance_criteria) {
+        document.querySelector('textarea[name="acceptance_criteria"]').value = data.acceptance_criteria;
+    }
+    
+    // Populate technical requirements
+    if (data.technical_requirements) {
+        document.querySelector('textarea[name="technical_requirements"]').value = data.technical_requirements;
+    }
+    
+    // Populate scope
+    if (data.scope) {
+        document.querySelector('textarea[name="scope"]').value = data.scope;
+    }
+    
+    // Set issue type
+    const issueTypeSelect = document.getElementById('issueType');
+    if (issueTypeSelect) {
+        issueTypeSelect.value = issueType;
+        issueTypeSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Set priority if suggested
+    if (data.priority) {
+        const prioritySelect = document.querySelector('select[name="priority"]');
+        if (prioritySelect) {
+            const validPriorities = ['low', 'medium', 'high', 'critical'];
+            if (validPriorities.includes(data.priority.toLowerCase())) {
+                prioritySelect.value = data.priority.toLowerCase();
+            }
+        }
+    }
+}
+
+function showAiError(message) {
+    const errorDiv = document.getElementById('aiError');
+    errorDiv.textContent = message;
+    errorDiv.classList.remove('d-none');
+}
+
+function showSuccessToast(message) {
+    // Create a simple toast notification
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="toast show align-items-center text-white bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.position-fixed').remove()"></button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Quick enhance buttons
+function enhanceDescription() {
+    const description = document.querySelector('textarea[name="description"]').value.trim();
+    if (!description) {
+        alert('Please enter a description first.');
+        return;
+    }
+    
+    const issueType = document.getElementById('issueType').value;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enhancing...';
+    
+    fetch('/api/ai/enhance-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: description, issue_type: issueType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Enhance';
+        if (data.success) {
+            document.querySelector('textarea[name="description"]').value = data.enhanced_description;
+        } else {
+            alert(data.error || 'Failed to enhance description.');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Enhance';
+        alert('Network error. Please try again.');
+    });
+}
+
+function suggestCriteria() {
+    const title = document.querySelector('input[name="title"]').value.trim();
+    const description = document.querySelector('textarea[name="description"]').value.trim();
+    
+    if (!title && !description) {
+        alert('Please enter a title or description first.');
+        return;
+    }
+    
+    const issueType = document.getElementById('issueType').value;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Suggesting...';
+    
+    fetch('/api/ai/suggest-criteria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, description: description, issue_type: issueType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Suggest';
+        if (data.success) {
+            const current = document.querySelector('textarea[name="acceptance_criteria"]').value.trim();
+            const newValue = current ? current + '\n\n' + data.acceptance_criteria : data.acceptance_criteria;
+            document.querySelector('textarea[name="acceptance_criteria"]').value = newValue;
+        } else {
+            alert(data.error || 'Failed to suggest criteria.');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Suggest';
+        alert('Network error. Please try again.');
+    });
+}
+
+// Handle project selection change - load related data
+document.getElementById('projectSelect').addEventListener('change', function() {
+    const projectId = this.value;
+    
+    if (!projectId) {
+        clearProjectDependentFields();
+        return;
+    }
+    
+    // Load project related data: epics, sprints, versions, components, labels, assignees
+    loadProjectData(projectId);
+});
+
+// Handle issue type change - show/hide parent issue field for sub-tasks
+document.getElementById('issueType').addEventListener('change', function() {
+    const parentSection = document.getElementById('parentIssueSection');
+    if (this.value === 'sub_task') {
+        parentSection.classList.remove('d-none');
+    } else {
+        parentSection.classList.add('d-none');
+        document.getElementById('parentSelect').value = '';
+    }
+});
+
+function loadProjectData(projectId) {
+    // Load epics
+    loadEpics(projectId);
+    
+    // Load sprints
+    loadSprints(projectId);
+    
+    // Load versions
+    loadVersions(projectId);
+    
+    // Load components
+    loadComponents(projectId);
+    
+    // Load labels
+    loadLabels(projectId);
+    
+    // Load assignees (team members)
+    loadAssignees(projectId);
+    
+    // Load parent issues
+    loadParentIssues(projectId);
+}
+
+function loadEpics(projectId) {
+    const epicSelect = document.getElementById('epicSelect');
+    epicSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/api/projects/${projectId}/epics`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Epics data received:', data);
+            epicSelect.innerHTML = '<option value="">None</option>';
+            if (data.epics && data.epics.length > 0) {
+                // Show all epics, don't filter by status yet
+                data.epics.forEach(epic => {
+                    console.log('Adding epic:', epic);
+                    const option = document.createElement('option');
+                    option.value = epic.id;
+                    option.textContent = `${epic.name} (${epic.status})`;
+                    epicSelect.appendChild(option);
+                });
+                console.log(`Loaded ${data.epics.length} epics`);
+            } else {
+                console.log('No epics found for project', projectId);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading epics:', error);
+            epicSelect.innerHTML = '<option value="">None (Error loading)</option>';
+        });
+}
+
+function loadSprints(projectId) {
+    const sprintSelect = document.getElementById('sprintSelect');
+    sprintSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/api/projects/${projectId}/sprints`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Sprints data received:', data);
+            sprintSelect.innerHTML = '<option value="">Backlog</option>';
+            if (data.sprints && data.sprints.length > 0) {
+                // Show all sprints, not just active ones
+                data.sprints.forEach(sprint => {
+                    console.log('Adding sprint:', sprint);
+                    const option = document.createElement('option');
+                    option.value = sprint.id;
+                    option.textContent = `${sprint.name} (${sprint.status})`;
+                    sprintSelect.appendChild(option);
+                });
+                console.log(`Loaded ${data.sprints.length} sprints`);
+            } else {
+                console.log('No sprints found for project', projectId);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sprints:', error);
+            sprintSelect.innerHTML = '<option value="">Backlog (Error loading)</option>';
+        });
+}
+
+function loadVersions(projectId) {
+    const versionSelect = document.getElementById('versionSelect');
+    versionSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/api/projects/${projectId}/versions`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Versions data received:', data);
+            versionSelect.innerHTML = '<option value="">None</option>';
+            if (data.versions && data.versions.length > 0) {
+                // Show all unreleased versions
+                data.versions.filter(version => version.status === 'unreleased').forEach(version => {
+                    console.log('Adding version:', version);
+                    const option = document.createElement('option');
+                    option.value = version.id;
+                    option.textContent = `${version.name} (${version.status})`;
+                    versionSelect.appendChild(option);
+                });
+                console.log(`Loaded ${data.versions.filter(v => v.status === 'unreleased').length} unreleased versions`);
+            } else {
+                console.log('No versions found for project', projectId);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading versions:', error);
+            versionSelect.innerHTML = '<option value="">None (Error loading)</option>';
+        });
+}
+
+function loadComponents(projectId) {
+    const container = document.getElementById('componentsContainer');
+    container.innerHTML = '<span class="text-muted">Loading...</span>';
+    
+    fetch(`/api/projects/${projectId}/components`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.components && data.components.length > 0) {
+                container.innerHTML = '';
+                data.components.forEach(component => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check';
+                    div.innerHTML = `
+                        <input class="form-check-input" type="checkbox" name="components" 
+                               value="${component.id}" id="component${component.id}">
+                        <label class="form-check-label" for="component${component.id}">
+                            ${component.name}
+                            ${component.lead ? `<small class="text-muted">(${component.lead.username})</small>` : ''}
+                        </label>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = '<span class="text-muted">No components available</span>';
+            }
+        })
+        .catch(() => {
+            container.innerHTML = '<span class="text-muted">Unable to load components</span>';
+        });
+}
+
+function loadLabels(projectId) {
+    const container = document.getElementById('labelsContainer');
+    container.innerHTML = '<span class="text-muted">Loading...</span>';
+    
+    fetch(`/api/projects/${projectId}/labels`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.labels && data.labels.length > 0) {
+                container.innerHTML = '';
+                data.labels.forEach(label => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check';
+                    div.innerHTML = `
+                        <input class="form-check-input" type="checkbox" name="labels" 
+                               value="${label.id}" id="label${label.id}">
+                        <label class="form-check-label" for="label${label.id}">
+                            <span class="badge" style="background-color: ${label.color};">${label.name}</span>
+                        </label>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = '<span class="text-muted">No labels available</span>';
+            }
+        })
+        .catch(() => {
+            container.innerHTML = '<span class="text-muted">Unable to load labels</span>';
+        });
+}
+
+function loadAssignees(projectId) {
+    const assigneeSelect = document.querySelector('select[name="assignee_id"]');
+    const currentValue = assigneeSelect.value;
+    assigneeSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/api/projects/${projectId}/members`)
+        .then(response => response.json())
+        .then(data => {
+            assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
+            if (data.members && data.members.length > 0) {
+                data.members.forEach(member => {
+                    const option = document.createElement('option');
+                    option.value = member.id;
+                    option.textContent = member.username;
+                    if (member.id == currentValue) {
+                        option.selected = true;
+                    }
+                    assigneeSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(() => {
+            assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
+        });
+}
+
+function loadParentIssues(projectId) {
+    const parentSelect = document.getElementById('parentSelect');
+    parentSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/api/projects/${projectId}/issues`)
+        .then(response => response.json())
+        .then(data => {
+            parentSelect.innerHTML = '<option value="">None</option>';
+            if (data.issues && data.issues.length > 0) {
+                // Only show non-subtask issues as potential parents
+                data.issues.filter(issue => issue.issue_type !== 'sub_task').forEach(issue => {
+                    const option = document.createElement('option');
+                    option.value = issue.id;
+                    option.textContent = `${issue.identifier} - ${issue.title}`;
+                    parentSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(() => {
+            parentSelect.innerHTML = '<option value="">None</option>';
+        });
+}
+
+function clearProjectDependentFields() {
+    // Clear epics
+    document.getElementById('epicSelect').innerHTML = '<option value="">Select a project first</option>';
+    
+    // Clear sprints
+    document.getElementById('sprintSelect').innerHTML = '<option value="">Select a project first</option>';
+    
+    // Clear versions
+    document.getElementById('versionSelect').innerHTML = '<option value="">Select a project first</option>';
+    
+    // Clear components
+    document.getElementById('componentsContainer').innerHTML = '<span class="text-muted">Select a project first</span>';
+    
+    // Clear labels
+    document.getElementById('labelsContainer').innerHTML = '<span class="text-muted">Select a project first</span>';
+    
+    // Clear assignees
+    const assigneeSelect = document.querySelector('select[name="assignee_id"]');
+    assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
+    
+    // Clear parent issues
+    document.getElementById('parentSelect').innerHTML = '<option value="">None</option>';
+}
+
+// Issue type guide content
+const issueTypeGuides = {
+    'task': {
+        title: '<i class="fas fa-tasks text-info me-2"></i>Task',
+        content: `<p class="small mb-2">A general work item that needs to be completed.</p>
+            <ul class="small mb-0">
+                <li>Clear, actionable description</li>
+                <li>Defined completion criteria</li>
+                <li>Estimated time if possible</li>
+            </ul>`
+    },
+    'bug': {
+        title: '<i class="fas fa-bug text-danger me-2"></i>Bug',
+        content: `<p class="small mb-2">A defect or issue in existing functionality.</p>
+            <ul class="small mb-0">
+                <li>Steps to reproduce</li>
+                <li>Expected vs actual behavior</li>
+                <li>Environment details</li>
+                <li>Screenshots if applicable</li>
+            </ul>
+            <p class="small mt-2 text-muted"><i class="fab fa-slack"></i> Notifies #bugs channel</p>`
+    },
+    'feature': {
+        title: '<i class="fas fa-lightbulb text-warning me-2"></i>Feature',
+        content: `<p class="small mb-2">A new capability or enhancement request.</p>
+            <ul class="small mb-0">
+                <li>User story format preferred</li>
+                <li>Business value/justification</li>
+                <li>Acceptance criteria required</li>
+                <li>Technical requirements</li>
+            </ul>
+            <p class="small mt-2 text-muted"><i class="fab fa-slack"></i> Notifies #feature channel</p>`
+    },
+    'story': {
+        title: '<i class="fas fa-book text-success me-2"></i>Story',
+        content: `<p class="small mb-2">A user-centric feature description.</p>
+            <ul class="small mb-0">
+                <li>Format: "As a [user], I want [goal] so that [reason]"</li>
+                <li>Clear acceptance criteria</li>
+                <li>Define scope boundaries</li>
+                <li>Break into subtasks if large</li>
+            </ul>
+            <p class="small mt-2 text-muted"><i class="fab fa-slack"></i> Notifies #feature channel</p>`
+    }
+};
+
+document.getElementById('issueType').addEventListener('change', function() {
+    const guideContainer = document.getElementById('guideContent');
+    const guideTitle = document.getElementById('guideTitle');
+    const type = this.value;
+    
+    if (type && issueTypeGuides[type]) {
+        const guide = issueTypeGuides[type];
+        guideTitle.innerHTML = guide.title;
+        guideContainer.innerHTML = guide.content;
+    } else {
+        guideTitle.textContent = 'Issue Guide';
+        guideContainer.innerHTML = '<p class="text-muted small mb-0">Select an issue type to see specific guidance.</p>';
+    }
+});
+</script>
+{% endblock %}

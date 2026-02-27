@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Wiki - {{ project.name }} - {{ app_name }}{% endblock %}
+
+<!-- Macro for recursive page tree rendering - must be defined before use -->
+{% macro render_page_tree(page) %}
+    <li class="mb-1">
+        <div class="d-flex align-items-center">
+            {% if page.children %}
+                <a href="#page-{{ page.id }}" data-bs-toggle="collapse" class="text-decoration-none me-1" aria-expanded="false">
+                    <i class="bi bi-chevron-right collapse-icon"></i>
+                </a>
+            {% else %}
+                <span class="me-1" style="width: 1rem;"></span>
+            {% endif %}
+            <a href="{{ url_for('wiki.view', project_id=page.project_id, page_id=page.id) }}" 
+               class="text-decoration-none flex-grow-1">
+                <i class="bi bi-file-text-fill"></i> {{ page.title }}
+            </a>
+        </div>
+        {% if page.children %}
+            <ul class="collapse list-unstyled ms-3" id="page-{{ page.id }}">
+                {% for child in page.children|sort(attribute='order,title') %}
+                    {{ render_page_tree(child) }}
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </li>
+{% endmacro %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('projects.view', project_id=project.id) }}">{{ project.name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Wiki</li>
+                </ol>
+            </nav>
+            <h1 class="mb-1">
+                <i class="bi bi-book"></i> Wiki - {{ project.name }}
+            </h1>
+            <p class="text-muted">Confluence-like documentation for your project</p>
+        </div>
+        <div>
+            <a href="{{ url_for('wiki.create', project_id=project.id) }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> New Page
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar Tree -->
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-list-nested"></i> Page Tree
+                    </h5>
+                    
+                    <!-- Search Box -->
+                    <form method="GET" action="{{ url_for('wiki.search', project_id=project.id) }}" class="mb-3">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="q" class="form-control" placeholder="Search wiki...">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% if root_pages %}
+                        <ul class="wiki-tree list-unstyled">
+                            {% for page in root_pages %}
+                                {{ render_page_tree(page) }}
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted small">No pages yet. <a href="{{ url_for('wiki.create', project_id=project.id) }}">Create the first page!</a></p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- All Pages List -->
+            {% if all_pages %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">All Pages ({{ all_pages|length }})</h6>
+                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                        {% for page in all_pages %}
+                            <a href="{{ url_for('wiki.view', project_id=project.id, page_id=page.id) }}" 
+                               class="list-group-item list-group-item-action py-2">
+                                <i class="bi bi-file-text"></i> {{ page.title }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-body">
+                    {% if root_pages %}
+                        <h4 class="mb-3">Root Pages</h4>
+                        <div class="row">
+                            {% for page in root_pages %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100 hover-shadow">
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                <a href="{{ url_for('wiki.view', project_id=project.id, page_id=page.id) }}" class="text-decoration-none">
+                                                    <i class="bi bi-file-text"></i> {{ page.title }}
+                                                </a>
+                                            </h5>
+                                            {% if page.content %}
+                                                <p class="card-text text-muted small">
+                                                    {{ page.content[:150] }}{% if page.content|length > 150 %}...{% endif %}
+                                                </p>
+                                            {% endif %}
+                                            {% if page.children %}
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-diagram-2"></i> {{ page.children|length }} child page(s)
+                                                    </small>
+                                                </div>
+                                            {% endif %}
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    Updated {{ page.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-book display-1 text-muted"></i>
+                            <h3 class="mt-3">No Wiki Pages Yet</h3>
+                            <p class="text-muted">Create your first page to start documenting your project!</p>
+                            <a href="{{ url_for('wiki.create', project_id=project.id) }}" class="btn btn-primary mt-3">
+                                <i class="bi bi-plus-lg"></i> Create First Page
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.wiki-tree .collapse-icon {
+    transition: transform 0.2s;
+}
+.wiki-tree [aria-expanded="true"] .collapse-icon {
+    transform: rotate(90deg);
+}
+.hover-shadow {
+    transition: box-shadow 0.2s;
+}
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+{% endblock %}

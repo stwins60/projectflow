@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{% if page %}Edit {{ page.title }}{% else %}New Page{% endif %} - Wiki - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<!-- TinyMCE for rich text editing -->
+<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('projects.view', project_id=project.id) }}">{{ project.name }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('wiki.index', project_id=project.id) }}">Wiki</a></li>
+            {% if page %}
+                <li class="breadcrumb-item active" aria-current="page">Edit {{ page.title }}</li>
+            {% else %}
+                <li class="breadcrumb-item active" aria-current="page">New Page</li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="bi bi-{% if page %}pencil{% else %}plus-lg{% endif %}"></i>
+            {% if page %}Edit {{ page.title }}{% else %}Create New Page{% endif %}
+        </h1>
+        <a href="{% if page %}{{ url_for('wiki.view', project_id=project.id, page_id=page.id) }}{% else %}{{ url_for('wiki.index', project_id=project.id) }}{% endif %}" 
+           class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </div>
+
+    <!-- Form -->
+    <div class="row">
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" id="wikiForm">
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Page Title <span class="text-danger">*</span></label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="title" 
+                                   name="title" 
+                                   value="{% if page %}{{ page.title }}{% endif %}"
+                                   required 
+                                   maxlength="200">
+                            <div class="form-text">A clear, descriptive title for your wiki page.</div>
+                        </div>
+
+                        <!-- Parent Page -->
+                        <div class="mb-3">
+                            <label for="parent_id" class="form-label">Parent Page</label>
+                            <select class="form-select" id="parent_id" name="parent_id">
+                                <option value="">None (Root Page)</option>
+                                {% for p in all_pages %}
+                                    <option value="{{ p.id }}" 
+                                            {% if page and page.parent_id == p.id %}selected{% endif %}
+                                            {% if parent_id and parent_id == p.id %}selected{% endif %}>
+                                        {{ p.title }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Organize pages in a hierarchy by selecting a parent page.</div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content</label>
+                            <textarea id="content" 
+                                      name="content" 
+                                      class="form-control">{% if page %}{{ page.content }}{% endif %}</textarea>
+                            <div class="form-text">Use the rich text editor to format your content.</div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> {% if page %}Update Page{% else %}Create Page{% endif %}
+                            </button>
+                            <a href="{% if page %}{{ url_for('wiki.view', project_id=project.id, page_id=page.id) }}{% else %}{{ url_for('wiki.index', project_id=project.id) }}{% endif %}" 
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Help -->
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-lightbulb"></i> Tips
+                    </h6>
+                    <ul class="small">
+                        <li>Use headings to structure your content</li>
+                        <li>Add links, images, and tables to enrich your documentation</li>
+                        <li>Organize related pages using parent-child relationships</li>
+                        <li>Keep titles clear and descriptive</li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if page and page.children %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle"></i> Note
+                    </h6>
+                    <p class="small text-muted mb-0">
+                        This page has {{ page.children|length }} child page(s) that will remain linked to it after editing.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- TinyMCE Initialization -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    tinymce.init({
+        selector: '#content',
+        height: 500,
+        menubar: true,
+        plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'media', 'table', 'help', 'wordcount'
+        ],
+        toolbar: 'undo redo | blocks | ' +
+            'bold italic underline strikethrough | forecolor backcolor | ' +
+            'alignleft aligncenter alignright alignjustify | ' +
+            'bullist numlist outdent indent | ' +
+            'link image media table | ' +
+            'removeformat code help',
+        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; }',
+        branding: false,
+        promotion: false,
+        resize: true
+    });
+});
+</script>
+{% endblock %}

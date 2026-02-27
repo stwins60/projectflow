@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Admin - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Settings</h1>
+        <p class="text-muted">Configure application integrations and settings</p>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('admin.settings') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <!-- SMTP Settings -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-envelope"></i> SMTP Email Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Server</label>
+                        <input type="text" name="smtp_server" class="form-control" 
+                               value="{{ settings.smtp_server }}" placeholder="smtp.gmail.com">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Port</label>
+                            <input type="number" name="smtp_port" class="form-control" 
+                                   value="{{ settings.smtp_port }}" placeholder="587">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Use TLS</label>
+                            <select name="smtp_use_tls" class="form-select">
+                                <option value="true" {{ 'selected' if settings.smtp_use_tls == 'true' }}>Yes</option>
+                                <option value="false" {{ 'selected' if settings.smtp_use_tls == 'false' }}>No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="smtp_username" class="form-control" 
+                               value="{{ settings.smtp_username }}" placeholder="your-email@gmail.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="smtp_password" class="form-control" 
+                               placeholder="••••••••">
+                        <small class="form-text text-muted">Leave empty to keep existing password</small>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Sender Email</label>
+                        <input type="email" name="smtp_sender" class="form-control" 
+                               value="{{ settings.smtp_sender }}" placeholder="noreply@example.com">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <!-- Slack Settings -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-slack"></i> Slack Integration</h5>
+                    <div class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="slackEnabled" 
+                               name="slack_enabled" value="true"
+                               {{ 'checked' if settings.slack_enabled == 'true' }}>
+                        <label class="form-check-label" for="slackEnabled">Enabled</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-0">
+                        <label class="form-label">Webhook URL</label>
+                        <input type="url" name="slack_webhook_url" class="form-control" 
+                               value="{{ settings.slack_webhook_url }}"
+                               placeholder="https://hooks.slack.com/services/...">
+                        <small class="form-text text-muted">
+                            Create a webhook at <a href="https://api.slack.com/apps" target="_blank">Slack Apps</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GitHub Settings -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-github"></i> GitHub Integration</h5>
+                    <div class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="githubEnabled" 
+                               name="github_enabled" value="true"
+                               {{ 'checked' if settings.github_enabled == 'true' }}>
+                        <label class="form-check-label" for="githubEnabled">Enabled</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-0">
+                        <label class="form-label">Personal Access Token</label>
+                        <input type="password" name="github_token" class="form-control" 
+                               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                        <small class="form-text text-muted">
+                            Create a token at <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-end">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-lg"></i> Save Settings
+        </button>
+    </div>
+</form>
+{% endblock %}

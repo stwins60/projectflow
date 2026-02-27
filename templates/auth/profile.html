@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Profile Settings</h1>
+        <p class="text-muted">Manage your account information and preferences</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="profile-avatar mb-3">
+                    {{ current_user.username[0].upper() }}
+                </div>
+                <h4>{{ current_user.full_name }}</h4>
+                <p class="text-muted">{{ current_user.email }}</p>
+                <span class="badge bg-{{ 'primary' if current_user.role.value == 'admin' else 'secondary' }}">
+                    {{ current_user.role.value.replace('_', ' ').title() }}
+                </span>
+                <hr>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="stat-value">{{ current_user.assigned_issues.count() }}</span>
+                        <span class="stat-label">Assigned Issues</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">{{ current_user.created_issues.count() }}</span>
+                        <span class="stat-label">Created Issues</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Personal Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.profile') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" name="first_name" 
+                                   value="{{ current_user.first_name or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" name="last_name" 
+                                   value="{{ current_user.last_name or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
+                        <small class="form-text text-muted">Username cannot be changed</small>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                        <small class="form-text text-muted">Contact admin to change email</small>
+                    </div>
+                    
+                    <h6 class="mb-3">Change Password</h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" name="current_password">
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-control" name="new_password" minlength="8">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" name="confirm_password">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ project.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.index') }}">Projects</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('projects.view', project_id=project.id) }}">{{ project.key }}</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
+        </nav>
+        <h1>Edit Project</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('projects.edit', project_id=project.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   value="{{ project.name }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="key" class="form-label">Key</label>
+                            <input type="text" class="form-control" id="key" value="{{ project.key }}" readonly disabled>
+                            <small class="text-muted">Cannot be changed</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ project.description or '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="lead_id" class="form-label">Project Lead</label>
+                            <select class="form-select" id="lead_id" name="lead_id">
+                                <option value="">Select lead...</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if project.lead_id == user.id %}selected{% endif %}>
+                                    {{ user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="color" class="form-label">Project Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="color" name="color" 
+                                   value="{{ project.color or '#6366f1' }}">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="bi bi-github"></i> GitHub Integration</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="github_repo" class="form-label">GitHub Repository</label>
+                            <input type="text" class="form-control" id="github_repo" name="github_repo"
+                                   value="{{ project.github_repo or '' }}" placeholder="owner/repository">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="github_enabled" name="github_enabled"
+                                       {% if project.github_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="github_enabled">Enable GitHub Sync</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="bi bi-slack"></i> Slack Integration</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="slack_channel" class="form-label">Slack Channel</label>
+                            <div class="input-group">
+                                <span class="input-group-text">#</span>
+                                <input type="text" class="form-control" id="slack_channel" name="slack_channel"
+                                       value="{{ project.slack_channel or '' }}" placeholder="project-channel">
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="slack_enabled" name="slack_enabled"
+                                       {% if project.slack_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="slack_enabled">Enable Slack</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                        <a href="{{ url_for('projects.view', project_id=project.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card mt-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Danger Zone</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Archive Project</h6>
+                        <p class="text-muted mb-0 small">Archive this project. It will be hidden from the project list but data will be preserved.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('projects.archive', project_id=project.id) }}" 
+                          onsubmit="return confirm('Are you sure you want to archive this project?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-warning">Archive</button>
+                    </form>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Delete Project</h6>
+                        <p class="text-muted mb-0 small">Permanently delete this project and all its issues. This cannot be undone.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('projects.delete', project_id=project.id) }}"
+                          onsubmit="return confirm('Are you sure you want to delete this project? This action cannot be undone.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Quick Settings</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('projects.members', project_id=project.id) }}" class="d-flex align-items-center">
+                            <i class="bi bi-people me-2"></i> Manage Members
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('projects.labels', project_id=project.id) }}" class="d-flex align-items-center">
+                            <i class="bi bi-tags me-2"></i> Manage Labels
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('projects.sprints', project_id=project.id) }}" class="d-flex align-items-center">
+                            <i class="bi bi-lightning me-2"></i> Manage Sprints
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Project Stats</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6">Total Issues</dt>
+                    <dd class="col-6">{{ project.issue_count }}</dd>
+                    
+                    <dt class="col-6">Team Size</dt>
+                    <dd class="col-6">{{ project.members.count() }}</dd>
+                    
+                    <dt class="col-6">Created</dt>
+                    <dd class="col-6">{{ project.created_at.strftime('%b %d, %Y') }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

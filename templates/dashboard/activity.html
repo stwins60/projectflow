@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Activity - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Activity Feed</h1>
+        <p class="text-muted">Your recent activity and changes</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <ul class="activity-timeline">
+            {% for activity in activities %}
+            <li class="activity-item">
+                <div class="activity-icon 
+                    {% if activity.action == 'created' %}bg-success-subtle{% endif %}
+                    {% if activity.action == 'updated' %}bg-info-subtle{% endif %}
+                    {% if activity.action == 'commented' %}bg-primary-subtle{% endif %}
+                ">
+                    {% if activity.action == 'created' %}
+                        <i class="bi bi-plus-lg text-success"></i>
+                    {% elif activity.action == 'commented' %}
+                        <i class="bi bi-chat-left-text text-primary"></i>
+                    {% else %}
+                        <i class="bi bi-pencil text-info"></i>
+                    {% endif %}
+                </div>
+                <div class="activity-content">
+                    <p class="mb-1">
+                        <strong>{{ activity.action.title() }}</strong>
+                        {% if activity.issue %}
+                            <a href="{{ url_for('issues.view', issue_id=activity.issue.id) }}">
+                                {{ activity.issue.key }}
+                            </a>
+                        {% endif %}
+                        {% if activity.field_name %}
+                            - {{ activity.field_name }}
+                            {% if activity.old_value and activity.new_value %}
+                                changed from <em>{{ activity.old_value }}</em> to <em>{{ activity.new_value }}</em>
+                            {% endif %}
+                        {% endif %}
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> 
+                        {{ activity.created_at.strftime('%b %d, %Y at %H:%M') }}
+                    </small>
+                </div>
+            </li>
+            {% else %}
+            <li class="text-center py-5 text-muted">
+                <i class="bi bi-clock-history" style="font-size: 3rem;"></i>
+                <p class="mt-3 mb-0">No activity yet</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
